@@ -116,7 +116,10 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- Icons Components (Simple SVGs for reliability) ---
+        // --- URL DEL WORKER ---
+        const WORKER_URL = "https://worker-ai-creadordeprogramasdefidelizacion.smartpasses.workers.dev/";
+
+        // --- Icons Components ---
         const SendIcon = () => (
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         );
@@ -132,6 +135,9 @@
         const QrCodeIcon = () => (
              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         );
+        const ExternalLinkIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        );
 
         // --- Mock Data ---
         const INITIAL_MESSAGES = [
@@ -145,40 +151,50 @@
 
         // --- Components ---
 
-        const PassPreview = ({ data }) => (
-            <div className="my-4 relative group cursor-pointer perspective-1000">
-                <div className="absolute -inset-1 bg-gradient-to-r from-neon-cyan to-neon-purple rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
-                <div className="relative w-64 h-auto bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700/50 transform transition hover:-translate-y-1">
-                    {/* Header Color */}
-                    <div className="h-24 bg-gradient-to-br from-indigo-600 to-purple-700 p-4 flex justify-between items-start">
-                        <span className="text-white font-bold tracking-wide uppercase text-sm">Loyalty</span>
-                        <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
-                           <SparklesIcon /> 
-                        </div>
-                    </div>
-                    {/* Content */}
-                    <div className="p-5 bg-slate-900">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h3 className="text-white font-display font-bold text-lg">{data.company || "Empresa"}</h3>
-                                <p className="text-slate-400 text-xs uppercase tracking-wider">{data.name || "Programa"}</p>
+        const PassPreview = ({ data }) => {
+            const handleOpen = () => {
+                if(data.shareUrl) window.open(data.shareUrl, '_blank');
+            };
+
+            return (
+                <div onClick={handleOpen} className="my-4 relative group cursor-pointer perspective-1000">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-neon-cyan to-neon-purple rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
+                    <div className="relative w-64 h-auto bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700/50 transform transition hover:-translate-y-1">
+                        {/* Header Color */}
+                        <div className="h-24 bg-gradient-to-br from-indigo-600 to-purple-700 p-4 flex justify-between items-start">
+                            <span className="text-white font-bold tracking-wide uppercase text-sm">Loyalty</span>
+                            <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
+                               <SparklesIcon /> 
                             </div>
                         </div>
-                        <div className="flex gap-2 mb-4">
-                             {[1,2,3,4,5].map(i => (
-                                 <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i <= 2 ? 'bg-neon-cyan text-black' : 'bg-slate-800 text-slate-600 border border-slate-700'}`}>
-                                    {i <= 2 ? '✓' : i}
-                                 </div>
-                             ))}
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
-                            <div className="text-slate-500 text-xs">Scan to collect</div>
-                            <QrCodeIcon />
+                        {/* Content */}
+                        <div className="p-5 bg-slate-900">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="text-white font-display font-bold text-lg">{data.company || "Empresa"}</h3>
+                                    <p className="text-slate-400 text-xs uppercase tracking-wider">{data.name || "Programa"}</p>
+                                    {data.id && <p className="text-slate-600 text-[10px] font-mono mt-1">ID: {data.id}</p>}
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mb-4">
+                                 {[1,2,3,4,5].map(i => (
+                                     <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i <= 2 ? 'bg-neon-cyan text-black' : 'bg-slate-800 text-slate-600 border border-slate-700'}`}>
+                                        {i <= 2 ? '✓' : i}
+                                     </div>
+                                 ))}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+                                <div className="text-slate-500 text-xs flex items-center gap-1">
+                                    {data.shareUrl ? "Click to open" : "Scan to collect"}
+                                    {data.shareUrl && <ExternalLinkIcon />}
+                                </div>
+                                <QrCodeIcon />
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        );
+            );
+        };
 
         const MessageBubble = ({ message }) => {
             const isBot = message.role === 'assistant';
@@ -205,7 +221,7 @@
                                     <PassPreview data={message.passData} />
                                 </div>
                             ) : (
-                                <p>{message.content}</p>
+                                <p style={{ whiteSpace: 'pre-line' }}>{message.content}</p>
                             )}
                         </div>
                     </div>
@@ -227,7 +243,6 @@
                 scrollToBottom();
             }, [messages, isTyping]);
 
-            // Esta función será reemplazada por la llamada a tu Cloudflare Worker en el futuro
             const handleSend = async (e) => {
                 e.preventDefault();
                 if (!input.trim()) return;
@@ -235,37 +250,51 @@
                 const userText = input;
                 setInput("");
                 
-                // 1. Add User Message
-                setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: userText, type: 'text' }]);
+                // 1. Agregar mensaje del usuario a la UI
+                const newHistory = [...messages, { id: Date.now(), role: 'user', content: userText, type: 'text' }];
+                setMessages(newHistory);
                 
-                // 2. Simulate AI Thinking
+                // 2. Mostrar indicador de escritura
                 setIsTyping(true);
 
-                // SIMULACIÓN DE RESPUESTA (Aquí conectarás tu API)
-                setTimeout(() => {
+                try {
+                    // 3. Llamar al Cloudflare Worker
+                    const response = await fetch(WORKER_URL, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            // Enviamos el historial para que la IA tenga contexto (nombre empresa, etc)
+                            messages: newHistory.map(m => ({ 
+                                role: m.role, 
+                                content: m.content 
+                            })) 
+                        })
+                    });
+
+                    if (!response.ok) throw new Error("Error en el servidor");
+
+                    const data = await response.json();
+
+                    // 4. Agregar respuesta de la IA
+                    setMessages(prev => [...prev, { 
+                        id: Date.now() + 1, 
+                        role: data.role || 'assistant', 
+                        content: data.content, 
+                        type: data.type || 'text',
+                        passData: data.passData // Datos para renderizar la tarjeta
+                    }]);
+
+                } catch (error) {
+                    console.error("Error conectando con el Worker AI:", error);
+                    setMessages(prev => [...prev, { 
+                        id: Date.now() + 1, 
+                        role: 'assistant', 
+                        content: "⚠️ Error de conexión con el Agente AI. Por favor verifica tu conexión o intenta más tarde.", 
+                        type: 'text' 
+                    }]);
+                } finally {
                     setIsTyping(false);
-                    
-                    // Simulación: Si el usuario menciona "crear", mostramos un preview del pase
-                    if (userText.toLowerCase().includes("crear")) {
-                         setMessages(prev => [...prev, { 
-                            id: Date.now() + 1, 
-                            role: 'assistant', 
-                            content: "¡Entendido! He configurado un borrador inicial para el programa. Aquí tienes una vista previa del Smart Pass:", 
-                            type: 'pass_preview',
-                            passData: {
-                                name: "Stamp Rewards",
-                                company: "Demo Company"
-                            }
-                        }]);
-                    } else {
-                        setMessages(prev => [...prev, { 
-                            id: Date.now() + 1, 
-                            role: 'assistant', 
-                            content: "Entiendo. Necesito algunos detalles más. ¿Cuál es el nombre de la empresa para la que estamos creando este programa?", 
-                            type: 'text' 
-                        }]);
-                    }
-                }, 1500);
+                }
             };
 
             return (
@@ -300,8 +329,8 @@
                                 </div>
                             </div>
                             <div className="hidden md:flex items-center gap-4 text-xs text-slate-400 font-mono">
-                                <span>v2.0.1</span>
-                                <span className="px-2 py-1 bg-white/5 rounded border border-white/5">latency: 12ms</span>
+                                <span>v2.1.0</span>
+                                <span className="px-2 py-1 bg-white/5 rounded border border-white/5">Workers AI Active</span>
                             </div>
                         </div>
 
@@ -336,7 +365,7 @@
                                     type="text"
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Describe el programa de lealtad que deseas crear..."
+                                    placeholder="Describe el programa de lealtad (ej: 'Crea un pase para BurgerKing')..."
                                     className="w-full h-14 pl-6 pr-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-neon-purple/50 focus:border-transparent transition-all shadow-inner font-light"
                                 />
                                 <button 
@@ -348,7 +377,7 @@
                                 </button>
                             </form>
                             <div className="text-center mt-3">
-                                <p className="text-[10px] text-slate-500">AI Agent Powered by Cloudflare Workers & SmartPasses API</p>
+                                <p className="text-[10px] text-slate-500">AI Agent Powered by SmartPasses & Cloudflare Workers</p>
                             </div>
                         </div>
 
