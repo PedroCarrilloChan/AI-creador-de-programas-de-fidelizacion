@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pass Architect AI</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        deep: {
+                            900: '#050511', // Almost black space
+                            800: '#0f0f25', // Deep space
+                            700: '#1a1a3a',
+                        },
+                        neon: {
+                            purple: '#7c3aed',
+                            cyan: '#06b6d4',
+                            pink: '#ec4899'
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #02020a;
+            color: #e2e8f0;
+            overflow: hidden; /* Prevent body scroll, handle in app */
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-input {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icons Components (Simple SVGs for reliability) ---
+        const SendIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        );
+        const SparklesIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>
+        );
+        const UserIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        );
+        const BotIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M12 22a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2 2 2 0 0 1 2 2v2a2 2 0 0 1-2 2z"/><path d="M22 12a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2 2 2 0 0 1 2-2h2a2 2 0 0 1 2 2z"/><path d="M6 12a2 2 0 0 1-2-2H2a2 2 0 0 1-2 2 2 2 0 0 1 2 2h2a2 2 0 0 1 2-2z"/><rect x="7" y="7" width="10" height="10" rx="3"/></svg>
+        );
+        const QrCodeIcon = () => (
+             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        );
+
+        // --- Mock Data ---
+        const INITIAL_MESSAGES = [
+            {
+                id: 1,
+                role: 'assistant',
+                content: "Hola. Soy el Arquitecto de Smart Pass. Estoy conectado a la API de lealtad. ¿Qué programa vamos a construir hoy?",
+                type: 'text'
+            }
+        ];
+
+        // --- Components ---
+
+        const PassPreview = ({ data }) => (
+            <div className="my-4 relative group cursor-pointer perspective-1000">
+                <div className="absolute -inset-1 bg-gradient-to-r from-neon-cyan to-neon-purple rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-500"></div>
+                <div className="relative w-64 h-auto bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700/50 transform transition hover:-translate-y-1">
+                    {/* Header Color */}
+                    <div className="h-24 bg-gradient-to-br from-indigo-600 to-purple-700 p-4 flex justify-between items-start">
+                        <span className="text-white font-bold tracking-wide uppercase text-sm">Loyalty</span>
+                        <div className="bg-white/20 p-1.5 rounded-full backdrop-blur-sm">
+                           <SparklesIcon /> 
+                        </div>
+                    </div>
+                    {/* Content */}
+                    <div className="p-5 bg-slate-900">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-white font-display font-bold text-lg">{data.company || "Empresa"}</h3>
+                                <p className="text-slate-400 text-xs uppercase tracking-wider">{data.name || "Programa"}</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 mb-4">
+                             {[1,2,3,4,5].map(i => (
+                                 <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i <= 2 ? 'bg-neon-cyan text-black' : 'bg-slate-800 text-slate-600 border border-slate-700'}`}>
+                                    {i <= 2 ? '✓' : i}
+                                 </div>
+                             ))}
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+                            <div className="text-slate-500 text-xs">Scan to collect</div>
+                            <QrCodeIcon />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const MessageBubble = ({ message }) => {
+            const isBot = message.role === 'assistant';
+            
+            return (
+                <div className={`flex w-full mb-6 ${isBot ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`flex max-w-[85%] md:max-w-[70%] ${isBot ? 'flex-row' : 'flex-row-reverse'} items-end gap-3`}>
+                        {/* Avatar */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isBot ? 'bg-neon-cyan/20 text-neon-cyan shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'bg-neon-purple/20 text-neon-purple'}`}>
+                            {isBot ? <BotIcon /> : <UserIcon />}
+                        </div>
+
+                        {/* Bubble */}
+                        <div className={`
+                            relative px-5 py-4 rounded-2xl text-sm md:text-base leading-relaxed
+                            ${isBot 
+                                ? 'bg-slate-800/80 border border-slate-700/50 text-slate-100 rounded-bl-none shadow-lg' 
+                                : 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-none shadow-[0_4px_15px_rgba(124,58,237,0.3)]'
+                            }
+                        `}>
+                            {message.type === 'pass_preview' ? (
+                                <div>
+                                    <p className="mb-2">{message.content}</p>
+                                    <PassPreview data={message.passData} />
+                                </div>
+                            ) : (
+                                <p>{message.content}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [messages, setMessages] = useState(INITIAL_MESSAGES);
+            const [input, setInput] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages, isTyping]);
+
+            // Esta función será reemplazada por la llamada a tu Cloudflare Worker en el futuro
+            const handleSend = async (e) => {
+                e.preventDefault();
+                if (!input.trim()) return;
+
+                const userText = input;
+                setInput("");
+                
+                // 1. Add User Message
+                setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: userText, type: 'text' }]);
+                
+                // 2. Simulate AI Thinking
+                setIsTyping(true);
+
+                // SIMULACIÓN DE RESPUESTA (Aquí conectarás tu API)
+                setTimeout(() => {
+                    setIsTyping(false);
+                    
+                    // Simulación: Si el usuario menciona "crear", mostramos un preview del pase
+                    if (userText.toLowerCase().includes("crear")) {
+                         setMessages(prev => [...prev, { 
+                            id: Date.now() + 1, 
+                            role: 'assistant', 
+                            content: "¡Entendido! He configurado un borrador inicial para el programa. Aquí tienes una vista previa del Smart Pass:", 
+                            type: 'pass_preview',
+                            passData: {
+                                name: "Stamp Rewards",
+                                company: "Demo Company"
+                            }
+                        }]);
+                    } else {
+                        setMessages(prev => [...prev, { 
+                            id: Date.now() + 1, 
+                            role: 'assistant', 
+                            content: "Entiendo. Necesito algunos detalles más. ¿Cuál es el nombre de la empresa para la que estamos creando este programa?", 
+                            type: 'text' 
+                        }]);
+                    }
+                }, 1500);
+            };
+
+            return (
+                <div className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden font-sans">
+                    
+                    {/* --- Ambient Background --- */}
+                    <div className="fixed inset-0 z-0 pointer-events-none">
+                        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-900/30 rounded-full blur-[100px] animate-blob mix-blend-screen"></div>
+                        <div className="absolute top-[20%] right-[-10%] w-96 h-96 bg-purple-900/20 rounded-full blur-[100px] animate-blob animation-delay-2000 mix-blend-screen"></div>
+                        <div className="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-cyan-900/20 rounded-full blur-[100px] animate-blob animation-delay-4000 mix-blend-screen"></div>
+                        
+                        {/* Grid Overlay */}
+                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,27,0)_1px,transparent_1px),linear-gradient(90deg,rgba(18,18,27,0)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_70%,transparent_100%)] opacity-20"></div>
+                    </div>
+
+                    {/* --- Main Container --- */}
+                    <div className="relative z-10 w-full max-w-4xl h-[95vh] md:h-[90vh] flex flex-col glass-panel md:rounded-3xl shadow-2xl overflow-hidden border-t border-white/10">
+                        
+                        {/* Header */}
+                        <div className="h-16 border-b border-white/5 bg-slate-900/40 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-gradient-to-tr from-neon-cyan to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                                    <SparklesIcon />
+                                </div>
+                                <div>
+                                    <h1 className="font-display font-bold text-lg tracking-tight text-white">Smart Pass Architect</h1>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        <span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">System Online</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="hidden md:flex items-center gap-4 text-xs text-slate-400 font-mono">
+                                <span>v2.0.1</span>
+                                <span className="px-2 py-1 bg-white/5 rounded border border-white/5">latency: 12ms</span>
+                            </div>
+                        </div>
+
+                        {/* Chat Area */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+                            {messages.map(msg => (
+                                <MessageBubble key={msg.id} message={msg} />
+                            ))}
+                            
+                            {/* Typing Indicator */}
+                            {isTyping && (
+                                <div className="flex w-full mb-6 justify-start">
+                                    <div className="flex max-w-[70%] items-end gap-3">
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-neon-cyan/20 text-neon-cyan">
+                                            <BotIcon />
+                                        </div>
+                                        <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-3 rounded-2xl rounded-bl-none flex gap-1 items-center h-10">
+                                            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div>
+                                            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div>
+                                            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full typing-dot"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-4 md:p-6 bg-slate-900/60 backdrop-blur-lg border-t border-white/5">
+                            <form onSubmit={handleSend} className="relative w-full max-w-3xl mx-auto">
+                                <input
+                                    type="text"
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    placeholder="Describe el programa de lealtad que deseas crear..."
+                                    className="w-full h-14 pl-6 pr-14 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-neon-purple/50 focus:border-transparent transition-all shadow-inner font-light"
+                                />
+                                <button 
+                                    type="submit"
+                                    disabled={!input.trim()}
+                                    className="absolute right-2 top-2 h-10 w-10 bg-gradient-to-tr from-indigo-600 to-neon-purple rounded-xl flex items-center justify-center text-white shadow-lg hover:shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <SendIcon />
+                                </button>
+                            </form>
+                            <div className="text-center mt-3">
+                                <p className="text-[10px] text-slate-500">AI Agent Powered by Cloudflare Workers & SmartPasses API</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
