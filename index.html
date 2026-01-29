@@ -117,6 +117,7 @@
         const { useState, useEffect, useRef } = React;
 
         // --- URL DEL WORKER ---
+        // Asegúrate de que esta sea TU URL correcta
         const WORKER_URL = "https://worker-ai-creadordeprogramasdefidelizacion.smartpasses.workers.dev/";
 
         // --- Icons Components ---
@@ -233,11 +234,28 @@
             const [messages, setMessages] = useState(INITIAL_MESSAGES);
             const [input, setInput] = useState("");
             const [isTyping, setIsTyping] = useState(false);
+            // ESTADO PARA LA SESIÓN (Memoria)
+            const [sessionId, setSessionId] = useState("");
             const messagesEndRef = useRef(null);
 
             const scrollToBottom = () => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             };
+
+            // Efecto: Generar o recuperar ID de sesión al cargar
+            useEffect(() => {
+                const existingSession = localStorage.getItem('smartpass_session_id');
+                if (existingSession) {
+                    setSessionId(existingSession);
+                    console.log("Sesión restaurada:", existingSession);
+                } else {
+                    const newSession = 'sess_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem('smartpass_session_id', newSession);
+                    setSessionId(newSession);
+                    console.log("Nueva sesión creada:", newSession);
+                }
+                scrollToBottom();
+            }, []);
 
             useEffect(() => {
                 scrollToBottom();
@@ -250,24 +268,22 @@
                 const userText = input;
                 setInput("");
                 
-                // 1. Agregar mensaje del usuario a la UI
-                const newHistory = [...messages, { id: Date.now(), role: 'user', content: userText, type: 'text' }];
-                setMessages(newHistory);
+                // 1. Agregar mensaje localmente
+                setMessages(prev => [...prev, { id: Date.now(), role: 'user', content: userText, type: 'text' }]);
                 
-                // 2. Mostrar indicador de escritura
                 setIsTyping(true);
 
                 try {
-                    // 3. Llamar al Cloudflare Worker
+                    // 2. Enviar AL WORKER con Session-ID
+                    // NOTA: Ahora enviamos solo el mensaje nuevo ("message"), no todo el array.
                     const response = await fetch(WORKER_URL, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { 
+                            "Content-Type": "application/json",
+                            "X-Session-Id": sessionId // El Worker usa esto para buscar en KV
+                        },
                         body: JSON.stringify({ 
-                            // Enviamos el historial para que la IA tenga contexto (nombre empresa, etc)
-                            messages: newHistory.map(m => ({ 
-                                role: m.role, 
-                                content: m.content 
-                            })) 
+                            message: userText 
                         })
                     });
 
@@ -275,13 +291,13 @@
 
                     const data = await response.json();
 
-                    // 4. Agregar respuesta de la IA
+                    // 3. Procesar respuesta
                     setMessages(prev => [...prev, { 
                         id: Date.now() + 1, 
                         role: data.role || 'assistant', 
                         content: data.content, 
                         type: data.type || 'text',
-                        passData: data.passData // Datos para renderizar la tarjeta
+                        passData: data.passData
                     }]);
 
                 } catch (error) {
@@ -289,7 +305,7 @@
                     setMessages(prev => [...prev, { 
                         id: Date.now() + 1, 
                         role: 'assistant', 
-                        content: "⚠️ Error de conexión con el Agente AI. Por favor verifica tu conexión o intenta más tarde.", 
+                        content: "⚠️ Error de conexión o sesión expirada.", 
                         type: 'text' 
                     }]);
                 } finally {
@@ -329,8 +345,8 @@
                                 </div>
                             </div>
                             <div className="hidden md:flex items-center gap-4 text-xs text-slate-400 font-mono">
-                                <span>v2.1.0</span>
-                                <span className="px-2 py-1 bg-white/5 rounded border border-white/5">Workers AI Active</span>
+                                <span className="text-slate-500">{sessionId ? "SID: " + sessionId.substring(0,6) + "..." : "Connecting..."}</span>
+                                <span className="px-2 py-1 bg-white/5 rounded border border-white/5">Workers AI + KV</span>
                             </div>
                         </div>
 
